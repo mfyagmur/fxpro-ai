@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FxPro AI Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+
+    <nav class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">📈</span>
+            <h1 class="text-xl font-bold tracking-wider text-blue-400">FxPro <span class="text-white">AI</span></h1>
+        </div>
+        <div class="flex gap-4">
+            <a href="#" class="hover:text-blue-400 transition">Piyasalar</a>
+            <a href="#" class="hover:text-blue-400 transition">Haberler</a>
+            <button class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-bold">Giriş Yap</button>
+        </div>
+    </nav>
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <aside class="w-72 bg-gray-800 border-r border-gray-700 flex flex-col hidden md:flex shrink-0">
+            <div class="p-6 border-b border-gray-700">
+                <h3 class="text-gray-400 text-xs uppercase font-bold tracking-widest">İzleme Listesi</h3>
+            </div>
+            
+            <ul class="flex-1 overflow-y-auto p-4 space-y-3">
+                {% for varlik in varliklar %}
+                <li onclick="veriyiGuncelle('{{ varlik.sembol }}', '{{ varlik.isim }}')" 
+                    class="group flex justify-between items-center p-4 bg-gray-700/20 border border-gray-700/50 rounded-xl cursor-pointer hover:bg-blue-600 hover:border-blue-500 transition-all duration-200">
+                    
+                    <div class="flex flex-col overflow-hidden mr-3">
+                        <span class="font-bold text-sm text-gray-200 group-hover:text-white truncate" title="{{ varlik.isim }}">
+                            {{ varlik.isim }}
+                        </span>
+                        <span class="text-[11px] text-gray-500 group-hover:text-blue-200 font-mono">
+                            {{ varlik.sembol }}
+                        </span>
+                    </div>
+
+                    <span class="text-[10px] font-bold bg-gray-800 text-gray-400 px-2 py-1 rounded-md border border-gray-600 group-hover:border-blue-400 group-hover:text-blue-100 shrink-0">
+                        {{ varlik.kategori }}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <div class="p-5 border-t border-gray-700 bg-gray-800/50">
+                <a href="/admin/analiz/varlik/add/" target="_blank" 
+                   class="flex items-center justify-center gap-2 w-full bg-gray-700 hover:bg-blue-600 text-sm font-medium text-white py-3 rounded-lg transition-colors border border-gray-600 hover:border-blue-500">
+                   <span>➕</span> Yeni Varlık Ekle
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-6 overflow-y-auto bg-gray-900 relative">
+            
+            <div id="loading" class="hidden absolute top-4 right-4 bg-blue-600 text-white text-xs px-3 py-1 rounded-full animate-pulse z-50">
+                Veri Güncelleniyor...
+            </div>
+
+            <div class="flex justify-between items-end mb-6 pb-4 border-b border-gray-800">
+                <div>
+                    <h2 id="baslik_sembol" class="text-3xl font-black tracking-tight text-white">Yükleniyor...</h2>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <p class="text-gray-400 text-sm">Canlı Piyasa Bağlantısı Aktif</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p id="fiyat_degeri" class="text-5xl font-black text-white tracking-tighter">---</p>
+                    <p id="degisim_degeri" class="text-lg font-medium mt-1">---</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+                <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 relative overflow-hidden group hover:border-blue-500 transition">
+                    <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </div>
+                    <h3 class="text-gray-400 text-xs uppercase font-bold tracking-wider">Yapay Zeka Sinyali</h3>
+                    <p id="ai_karar" class="text-2xl font-bold mt-2">---</p>
+                    <div class="mt-2 flex items-center gap-2">
+                        <div class="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                            <div id="rsi_bar" class="h-full bg-blue-500 w-1/2"></div>
+                        </div>
+                        <span id="rsi_deger" class="text-xs text-gray-400">RSI: --</span>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-blue-500 transition">
+                    <h3 class="text-gray-400 text-xs uppercase font-bold tracking-wider">Haber Duygusu</h3>
+                    <p id="haber_durumu" class="text-2xl font-bold text-blue-400 mt-2">---</p>
+                    <p class="text-xs text-gray-500 mt-1">Son 24 saatteki global haber analizi</p>
+                </div>
+
+                <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-blue-500 transition">
+                    <h3 class="text-gray-400 text-xs uppercase font-bold tracking-wider">AI Hedef (24s)</h3>
+                    <p id="tahmin_fiyat" class="text-2xl font-bold text-white mt-2">---</p>
+                    <p id="tahmin_yonu" class="text-xs font-bold mt-1">---</p>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden h-[550px] shadow-2xl">
+                <div id="tradingview_chart" class="w-full h-full"></div>
+            </div>
+        </main>
+
+        <aside class="w-80 bg-gray-900 border-l border-gray-700 hidden xl:flex flex-col h-full">
+            
+            <div class="flex-1 flex flex-col min-h-0 border-b border-gray-800">
+                <div class="p-4 bg-gray-800/50">
+                    <h3 class="text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                        📅 Ekonomik Takvim
+                    </h3>
+                </div>
+                <div class="flex-1 relative bg-gray-900">
+                    <div class="tradingview-widget-container" style="height: 100%; width: 100%;">
+                        <div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
+                        {
+                        "width": "100%",
+                        "height": "100%",
+                        "colorTheme": "dark",
+                        "isTransparent": true,
+                        "locale": "tr",
+                        "importanceFilter": "-1,0,1",
+                        "currencyFilter": "USD,EUR,TRY,GBP,XAU"
+                        }
+                        </script>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="h-64 bg-gray-800/20 flex flex-col">
+                <div class="p-3 border-t border-b border-gray-800 bg-gray-800/50">
+                    <h3 class="text-white text-xs font-bold uppercase tracking-wider">
+                        🌍 Küresel Piyasalar
+                    </h3>
+                </div>
+                <div class="flex-1 relative">
+                    <div class="tradingview-widget-container" style="height: 100%; width: 100%;">
+                        <div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+                        {
+                        "colorTheme": "dark",
+                        "dateRange": "12M",
+                        "showChart": false,
+                        "locale": "tr",
+                        "largeChartUrl": "",
+                        "isTransparent": true,
+                        "showSymbolLogo": true,
+                        "width": "100%",
+                        "height": "100%",
+                        "tabs": [
+                            {
+                            "title": "Pariteler",
+                            "symbols": [
+                                { "s": "FX:EURUSD", "d": "EUR/USD" },
+                                { "s": "FX:USDTRY", "d": "USD/TRY" },
+                                { "s": "FX:GBPUSD", "d": "GBP/USD" },
+                                { "s": "OANDA:XAUUSD", "d": "ALTIN" }
+                            ]
+                            }
+                        ]
+                        }
+                        </script>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            veriyiGuncelle('{{ secili_sembol }}', 'Varsayılan');
+        });
+
+        // GLOBAL DEĞİŞKEN (Oto Pilot İçin)
+        window.seciliSembolGlobal = '{{ secili_sembol }}';
+
+        // OTO PİLOT: 30 Saniyede bir güncelle
+        setInterval(function() {
+            if(window.seciliSembolGlobal) {
+                console.log("Otomatik veri çekiliyor...");
+                veriyiGuncelle(window.seciliSembolGlobal, 'Guncelleme'); 
+            }
+        }, 30000); // 30.000 ms = 30 saniye
+
+        function veriyiGuncelle(sembol, isim) {
+            window.seciliSembolGlobal = sembol; // Seçimi hatırla
+
+            // Sadece kullanıcı tıkladıysa başlığı değiştir, oto pilotta değiştirme
+            if(isim !== 'Guncelleme') {
+                document.getElementById('loading').classList.remove('hidden');
+                if(isim !== 'Varsayılan') document.getElementById('baslik_sembol').innerText = isim;
+            }
+
+            fetch(`/api/get_data/?sembol=${sembol}`)
+                .then(response => response.json())
+                .then(data => {
+                    if(data.error) return;
+
+                    document.getElementById('fiyat_degeri').innerText = `$${data.fiyat}`;
+                    
+                    const degisimElem = document.getElementById('degisim_degeri');
+                    degisimElem.innerText = `%${data.degisim}`;
+                    degisimElem.className = data.degisim_pozitif ? 'text-lg font-medium mt-1 text-green-400' : 'text-lg font-medium mt-1 text-red-400';
+
+                    const kararElem = document.getElementById('ai_karar');
+                    kararElem.innerText = data.karar;
+                    kararElem.className = `text-2xl font-bold mt-2 ${data.karar_class}`;
+
+                    document.getElementById('rsi_deger').innerText = `RSI: ${data.rsi}`;
+                    // RSI Barını Boya (Görsel Efekt)
+                    document.getElementById('rsi_bar').style.width = `${data.rsi}%`;
+                    document.getElementById('rsi_bar').className = `h-full ${data.rsi > 70 ? 'bg-red-500' : data.rsi < 30 ? 'bg-green-500' : 'bg-blue-500'}`;
+
+                    document.getElementById('haber_durumu').innerText = data.haber_durumu;
+                    document.getElementById('tahmin_fiyat').innerText = `$${data.tahmin}`;
+                    document.getElementById('tahmin_yonu').innerText = data.tahmin_yonu;
+                    document.getElementById('tahmin_yonu').className = data.tahmin_yonu.includes("YÜKSELİŞ") ? "text-xs font-bold mt-1 text-green-400" : "text-xs font-bold mt-1 text-red-400";
+
+                    // Grafiği sadece kullanıcı tıkladıysa güncelle (Sürekli yenileme grafiği bozar)
+                    if(isim !== 'Guncelleme') {
+                        grafigiGuncelle(data.tradingview_symbol);
+                    }
+                })
+                .finally(() => {
+                    document.getElementById('loading').classList.add('hidden');
+                });
+        }
+
+        function grafigiGuncelle(tvSembol) {
+            document.getElementById('tradingview_chart').innerHTML = "";
+            new TradingView.widget({
+                "autosize": true,
+                "symbol": tvSembol,
+                "interval": "D",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "tr",
+                "toolbar_bg": "#f1f3f6",
+                "enable_publishing": false,
+                "allow_symbol_change": false,
+                "container_id": "tradingview_chart"
+            });
+        }
+    </script>
+</body>
+</html>
